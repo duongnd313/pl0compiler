@@ -17,12 +17,15 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 	
+	int i = 0;
 	struct token mtoken;
 	char cb = ' ';
 	do {
 		get_token(f, &cb, &mtoken);
 		print_token(mtoken);
+		i++;
 	} while (mtoken.tag != TERROR && mtoken.tag != TENDT);
+	printf("ntoken=%d\n", i);
 	return 0;
 }
 
