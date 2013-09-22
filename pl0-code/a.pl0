@@ -1,0 +1,6 @@
+Program Example2;
+While a <> b do
+if a > b then a := a - b
+Call gcd(a,b,c);
+
+

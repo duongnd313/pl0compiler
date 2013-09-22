@@ -65,6 +65,7 @@ extern struct token* get_token(FILE* f, char* c_before, struct token* mtoken) {
 				ch = fgetc(f);
 				if (i > MAX_IDENT_LENGTH + 1) {
 					mtoken->tag = TERROR;
+					value[i] = '\0';
 					strcpy(mtoken->attribute, value);
 					return mtoken;
 				}
@@ -108,9 +109,43 @@ extern struct token* get_token(FILE* f, char* c_before, struct token* mtoken) {
 					*c_before = fgetc(f);
 					return mtoken;
 			case '(':
-					mtoken->tag = TLPAREN;
-					*c_before = fgetc(f);
+				//printf("(");
+					ch = fgetc(f);
+					if (ch == '*') {
+						//printf("*");
+						while (ch != EOF) {
+							ch = fgetc(f);
+							if (ch == '*') {
+								//printf("*");
+								ch = fgetc(f);
+								if (ch == ')') {
+									//printf(")");
+									break;
+								}
+							}
+						}
+						if (ch == EOF) {
+							mtoken->tag = TERROR;
+							strcpy(mtoken->attribute, "Loi comment");
+							*c_before =	ch;
+							return mtoken;
+						} else {
+							ch = fgetc(f);
+							*c_before =	ch;
+							printf("TCOMMENT\n");
+							break;
+						}
+					}
+					else {
+						mtoken->tag = TLPAREN;
+						*c_before =	ch;
+					}
 					return mtoken;
+					
+					/*
+					mtoken->tag = ;
+					*c_before = fgetc(f);
+					return mtoken;*/
 			case ')':
 					mtoken->tag = TRPAREN;
 					*c_before = fgetc(f);

@@ -1,0 +1,10 @@
+var
+  countdown;
+begin
+  countdown := 10;
+  while countdown >= 0 do
+  begin
+    write countdown;
+    countdown := countdown - 1;
+  end
+end

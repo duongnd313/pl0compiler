@@ -6,6 +6,7 @@
 #include "lexer.h"
 
 int main(int argc, char* argv[]) {
+	printf("hihi\n");
 	if (argc == 1) {
 		printf("Duong dan file bi bo trong\n");
 		return 0;
