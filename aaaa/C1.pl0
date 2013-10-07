@@ -1,0 +1,9 @@
+Program Test;
+Var N;
+Begin 
+    N := a > 10 ? a - 10 : a + 10;
+End.
+
+(*------- Bieu thuc dieu kien ? :  --------------*) 
+
+

@@ -1,0 +1,8 @@
+Program Test;
+CONST M = 20;
+VAR X, A[20];
+Begin
+	X := 20* A[];
+End.
+
+(* Thieu toan hang  *)

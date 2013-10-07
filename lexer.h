@@ -25,11 +25,22 @@ extern int get_keyword(char* str) {
 	return -1;
 }
 
+int line=1;
+int col=1;
+
 extern struct token* get_token(FILE* f, char* c_before, struct token* mtoken) {
 	char ch = *c_before;
 	
 	while (ch != EOF) {
 		// space
+		if (ch == '\n') {
+			line++;
+			col = 1;
+		} else {
+			col++;
+		}
+		mtoken->line = line;
+		mtoken->col = col;
 		if (isspace(ch)) {
 			// skip
 			ch = fgetc(f);
@@ -214,9 +225,14 @@ extern struct token* get_token(FILE* f, char* c_before, struct token* mtoken) {
 						*c_before = fgetc(f);
 					}
 					else {
-						mtoken->tag = TERROR;
-						*c_before =	ch;
+						mtoken->tag = TCOLOM;
+						*c_before = fgetc(f);
 					}
+					return mtoken;
+			case '?':
+					printf("hoi cham");
+					mtoken->tag = TQUESTION;
+					*c_before = fgetc(f);
 					return mtoken;
 				default:
 					mtoken->tag = TERROR;

@@ -1,0 +1,10 @@
+Program Test;
+VAR X;
+Begin
+	IF X > 10 Then X := 5
+	Else X := 10;
+End.
+
+(* Test If else hop le*)
+
+

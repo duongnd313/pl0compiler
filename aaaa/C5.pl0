@@ -1,0 +1,14 @@
+
+Program Test;
+Var N;
+   procedure foo;
+   begin
+   end;
+
+Begin 
+    CALL Foo;
+    CALL Foo();
+End. 
+
+
+(*--- Cau lenh CALL *)

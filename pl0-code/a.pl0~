@@ -5,12 +5,9 @@ procedure prop
 ;
 	var ident;
 	begin
-		a := a + 5
+		;
 	end
 ;
 begin
-	a := 5;
-	a := b;
-	call giaithua();
-	b := 8
+;
 end.

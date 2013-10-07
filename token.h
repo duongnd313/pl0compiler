@@ -10,5 +10,7 @@
 struct token {
 	enum token_tag tag;
 	char attribute[MAX_ATTRIBUTE_LENGTH];
+	int line;
+	int col;
 };
 #endif

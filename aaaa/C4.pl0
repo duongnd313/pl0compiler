@@ -1,0 +1,6 @@
+Program Test; 
+Var n ;
+Begin
+	Do BEGIN END WHILE N > 0; 
+	Do N := N - 1 WHILE N > 0
+End. 

@@ -1,0 +1,7 @@
+Program Test1B; 
+Begin
+  X := 10 * 20
+  Y = 20 +6;	
+End. 
+
+(* Thieu dau cham phay*) 

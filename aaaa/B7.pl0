@@ -1,0 +1,6 @@
+Program Test7B;  
+Begin
+  FOR A = 10 To 20 do;
+End. 
+
+(*Thieu toan tu gan*)

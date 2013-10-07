@@ -1,0 +1,7 @@
+Program TESTA5; 
+VAR N ;
+Begin
+  N := -10 * 20 + 5;
+  If N * 10 > N + 10 Then N := 2;  
+End. 
+(* Test Bieu thuc don gian *)

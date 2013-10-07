@@ -1,0 +1,6 @@
+Program Example1; 
+Var Min;
+Const Max = 10;
+Begin
+
+End.

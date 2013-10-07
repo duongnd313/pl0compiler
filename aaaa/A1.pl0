@@ -1,0 +1,17 @@
+Program TESTA1; 
+Const MAX = 100, MIN = 0; 
+VAR M, N;
+  PROCEDURE ADD(VAR A);
+  VAR M;
+    PROCEDURE SUB;
+    BEGIN
+    END;
+  BEGIN
+    M:=M+10;
+  END;
+
+Begin
+  
+End.
+
+(* Test Khai bao don gian *) 

@@ -1,0 +1,11 @@
+
+
+Program Test;
+Var N, S;
+Begin 
+   for(n := 10; n <= 100; n := n+1);
+ 
+   for(n := 10; n <= 100; n := n+1)  S := S + 2;
+End. 
+
+(*--- Cau lenh FOR(Ident := Expression; Conditon; Ident := Expresion) ----*)

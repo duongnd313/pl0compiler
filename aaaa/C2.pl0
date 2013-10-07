@@ -1,0 +1,11 @@
+Program Test;
+Var N;
+Begin 
+    Do
+       N := 10;
+       If A > 10 Then A := A- 10
+    While N > 20
+End. 
+
+
+(*--- Cau lenh REPEAT Staement [; Statement] UNTIL Condition ----*)

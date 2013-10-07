@@ -1,0 +1,8 @@
+Program Test10B; 
+Var Min;
+Procedure Test;
+Begin
+  Min :=  10
+End;
+
+(*Chua co than chuong trinh: Thieu Begin*)

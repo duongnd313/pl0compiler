@@ -1,0 +1,19 @@
+Program TESTA1; 
+Var N;
+Begin
+   N := N * 20;
+   If N > 10 Then
+     Begin
+	N := N + 2;
+        For i := 1 to 10 do 
+          S := S + N;
+     End
+   Else ;
+
+   While  N > 10 Do;
+
+   Call Sub(10, a*20);
+  
+End. 
+
+(* Test Cau Lenh don gian *)

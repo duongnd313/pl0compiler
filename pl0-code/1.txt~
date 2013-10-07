@@ -1,0 +1,21 @@
+program test;
+var a,b,c;
+procedure gcd(a; b; var d);
+begin
+do
+	(*if a > b then a[b+c] := a - b
+	else b := b - a;
+	a := a > b ? a :b;
+	d := b;*)
+	a:=a+b;
+while a <> b
+end;
+
+begin
+	call readln(a);
+	call readln(b);
+	call gcd(a,b,c);
+	call writeln(c);
+	for (x:=0; x < 6; x := 3)
+		x:=x*78; a:=8; b := b + 8;
+end.

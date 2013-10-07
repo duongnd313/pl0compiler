@@ -1,0 +1,11 @@
+Program Test;
+VAR X;
+Begin
+   FOR i :=1 TO 10 Do;
+  
+   WHILE A > b Do ;
+
+   If A > 10 Then
+End.
+
+(* Cau lenh rong : Hop le*)

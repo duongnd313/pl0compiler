@@ -1,0 +1,8 @@
+Program Test8B; 
+Var Y;
+Procedure Test()
+Begin
+  Min :=  a +10;
+End;
+
+(* Khai bao thu tuc loi: Phair cos tham so*) 

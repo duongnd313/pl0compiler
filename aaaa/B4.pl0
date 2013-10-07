@@ -1,0 +1,8 @@
+Program Test4B; 
+VAR N;
+
+Begin
+	IF X >< 20 Then;
+End. 
+
+(* Thieu toan hang o vi tri toan tu >*)

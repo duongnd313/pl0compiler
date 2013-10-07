@@ -1,10 +1,12 @@
 #ifndef TAG_H
 #define TAG_H
 
-#define NUM_KEYWORD 15
+#define NUM_KEYWORD 16
 enum token_tag {
+	// CONST
+	TCONST,
 	// BEGIN = 25
-	TBEGIN = 0,
+	TBEGIN,
 	// CALL
 	TCALL,
 	// CONST
@@ -83,13 +85,19 @@ enum token_tag {
 	TCLTEQ,
 	// <>
 	TCGTLT,
+	// :
+	TCOLOM,
+	// ?
+	TQUESTION,
 	// ERROR=40
 	TERROR,
 	// TNONE
 	TENDT
 	};
 	
-extern char tag_name[42][48] = {
+char tag_name[45][48] = {
+	// CONST
+	"TCONST",
 	// BEGIN
 	"TBEGIN",
 	// CALL
@@ -170,13 +178,19 @@ extern char tag_name[42][48] = {
 	"TCLTEQ",
 	// <>
 	"TCGTLT",
+	// COLOM
+	"COLOM",
+	// QUESTION
+	"QUESTION",
 	// ERROR
 	"TERROR",
 	// TNONE
 	"TENDT"
 	};
 	
-extern char tag_keyword_name[NUM_KEYWORD][48] = {
+char tag_keyword_name[NUM_KEYWORD][48] = {
+	// CONST
+	"CONST",
 	// BEGIN
 	"BEGIN",
 	// CALL
