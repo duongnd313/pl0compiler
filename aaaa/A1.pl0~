@@ -13,7 +13,7 @@ VAR M, N, D, ADD;
   END;
 
 Begin
-  call ADD();
+  ADD();
 End.
 
 (* Test Khai bao don gian *) 

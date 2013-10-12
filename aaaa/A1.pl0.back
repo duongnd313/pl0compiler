@@ -1,19 +1,17 @@
 Program TESTA1; 
 Const MAX = 100, MIN = 0; 
-VAR M, N, D, ADD;
+VAR M, N;
   PROCEDURE ADD(VAR A);
-  VAR M, D;
+  VAR M;
     PROCEDURE SUB;
-    VAR D, M;
     BEGIN
-	D := M + MAX;
     END;
   BEGIN
     M:=M+10;
   END;
 
 Begin
-  call ADD();
+  
 End.
 
 (* Test Khai bao don gian *) 

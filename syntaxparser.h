@@ -4,6 +4,7 @@
 #include "token.h"
 #include "lexer.h"
 #include "tag.h"
+#include "semantic.h"
 #include <stdlib.h>
 extern int parse_program(struct token* current_token, void (*get_token)(struct token* next_token));
 extern int parse_factor(struct token* current_token, void (*get_token)(struct token* next_token));
@@ -13,7 +14,10 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 extern int parse_condition(struct token* current_token, void (*get_token)(struct token* next_token));
 extern int parse_term(struct token* current_token, void (*get_token)(struct token* next_token));
 extern void error(int error_code, struct token mtoken);
+extern void printferror(struct token mtoken, char* msg);
 
+struct symbols main_block_symbols;
+struct symbols* current_symbols = &main_block_symbols;
 extern void error(int error_code, struct token mtoken) {
 	printf("\nError %d truoc token %s(line %d, col %d)", error_code, tag_name[mtoken.tag], mtoken.line, mtoken.col);
 	switch (error_code) {
@@ -117,8 +121,21 @@ extern void error(int error_code, struct token mtoken) {
 	exit(-1);
 }
 
+extern void printferror(struct token mtoken, char* msg) {
+	printf("\nError truoc token %s(line %d, col %d)", tag_name[mtoken.tag], mtoken.line, mtoken.col);
+	printf("%s", msg);
+	exit(-1);
+}
+
+extern void error_semantic(struct token mtoken, char* msg) {
+	printf("\nError token %s(line %d, col %d) \n", mtoken.attribute, mtoken.line, mtoken.col);
+	printf("%s\n", msg);
+	exit(-1);
+}
+
 extern int parse_program(struct token* current_token, void (*get_token)(struct token* next_token)) {
 	printf("parse program: ");
+	main_block_symbols.parent = NULL;
 	print_token(*current_token);
 	if (current_token->tag == TEND) {
 		error(4, *current_token);
@@ -159,8 +176,32 @@ extern int parse_factor(struct token* current_token, void (*get_token)(struct to
 	printf("parse_factor: ");
 	print_token(*current_token);
 	if (current_token->tag == TIDENT) {
+		// coppy token
+		struct token tmp;
+		strcpy(tmp.attribute, current_token->attribute);
+		tmp.col = current_token->col;
+		tmp.line = current_token->line;
 		(*get_token)(current_token);
-		if (current_token->tag == TLBRACE) {
+		if (current_token->tag == TLBRACE) { // Array
+			int code = find_declared(current_symbols, tmp.attribute, ITARRAY);
+			switch (code) {
+				case 1: // chua khai bao
+					error_semantic(tmp, "Mang chua duoc khai bao.\0");
+				break;
+				case 0: // da khai bao
+				break;
+				case ITARRAY: // khong the xay ra
+				break;
+				case ITCONSTANT:
+					error_semantic(tmp, "Khong the su dung hang nhu 1 mang.\0");
+				break;
+				case ITPROCEDURE:
+					error_semantic(tmp, "Khong the su dung thu tuc nhu 1 mang.\0");
+				break;
+				case ITVARIABLE:
+					error_semantic(tmp, "Khong the su dung bien nhu 1 mang.\0");
+				break;
+			}
 			(*get_token)(current_token);
 			parse_expression(current_token, get_token);
 			if (current_token->tag == TRBRACE) {
@@ -170,6 +211,26 @@ extern int parse_factor(struct token* current_token, void (*get_token)(struct to
 				error(17, *current_token);
 				return 17;
 			}
+		}
+		// variable or constant
+		int code = find_declared(current_symbols, tmp.attribute, ITVARIABLE);
+		switch (code) {
+			case 1: // chua khai bao
+				error_semantic(tmp, "Bien/Hang chua duoc khai bao.\0");
+			break;
+			case 0: // da khai bao
+			break;
+			case ITARRAY:
+				error_semantic(tmp, "Thieu index cho mang.\0");
+			break;
+			case ITCONSTANT:
+				// ok
+			break;
+			case ITPROCEDURE:
+				error_semantic(tmp, "Khong the su dung thu tuc nhu 1 bien.\0");
+			break;
+			case ITVARIABLE: // Khong the xay ra
+			break;
 		}
 		return 0;
 	} else if (current_token->tag == TNUMBER) {
@@ -233,156 +294,221 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 		error(5, *current_token);
 		return -1;
 	}
-	switch (current_token->tag) {
-		case TCONST:
-			do {
-				(*get_token)(current_token);
-				if (current_token->tag == TIDENT) {
-					(*get_token)(current_token);
-					if (current_token->tag == TEQUAL) {
-						(*get_token)(current_token);
-						if (current_token->tag == TNUMBER) {
-							(*get_token)(current_token);
-						} else { // Thieu number sau dau =
-							error(2, *current_token);
-							return 2;
-						}
-					} else { // Thieu dau "="
-						error(7, *current_token);
-						return 7;
-					}
-				} else { // Thieu ident
-					error(6, *current_token);
-					return 6;
-				}
-			} while (current_token->tag == TCOMMA);
-			// Test ;
-			if (current_token->tag == TSCOLON) {
-				(*get_token)(current_token);
-				parse_block(current_token, get_token);
-				return 0;
-			} else { // thieu dau ;
-				error(1, *current_token);
-				return 1;
-			}
-			break;
-		case TVAR:
-			do {
-				(*get_token)(current_token);
-				if (current_token->tag == TIDENT) {
-					(*get_token)(current_token);
-					// check array?
-					if (current_token->tag == TLBRACE) { // "[" => array
-						(*get_token)(current_token);
-						if (current_token->tag == TNUMBER) {
-							(*get_token)(current_token);
-							if (current_token->tag == TRBRACE) {
-								(*get_token)(current_token);
-							} else {
-								error(17, *current_token);
-								return 17;
-							}
-						} else {
-							return 17;
-							error(22, *current_token);
-						}
-					}
-				} else { // Thieu IDENT
-					error(6, *current_token);
-					return 6;
-				}
-			} while (current_token->tag == TCOMMA);
-			// Test ;
-			if (current_token->tag == TSCOLON) {
-				(*get_token)(current_token);
-				parse_block(current_token, get_token);
-				return 0;
-			} else { // thieu dau ;
-				error(1, *current_token);
-				return 1;
-			}
-			break;
-		case TPROCEDURE:
+	if (current_token->tag == TCONST) {
+		do {
 			(*get_token)(current_token);
 			if (current_token->tag == TIDENT) {
+				// coppy token
+				struct token tmp;
+				strcpy(tmp.attribute, current_token->attribute);
+				tmp.col = current_token->col;
+				tmp.line = current_token->line;
 				(*get_token)(current_token);
-				if (current_token->tag == TLPAREN) { // TLPAREN
-					do {
+				// kiem tra va add constant
+				if (!is_exist_name(current_symbols, tmp.attribute, ITCONSTANT)) {
+					add_ident(current_symbols, current_token->attribute, ITCONSTANT);
+				} else {
+					error_semantic(*current_token, "Khai bao hang trung ten\n\0");
+				}
+				if (current_token->tag == TEQUAL) {
+					(*get_token)(current_token);
+					if (current_token->tag == TNUMBER) {
 						(*get_token)(current_token);
-						// VAR is optionnal
-						if (current_token->tag == TVAR) {
-							(*get_token)(current_token);
-						}
-						//(*get_token)(current_token);
-						if (current_token->tag == TIDENT) {
+					} else { // Thieu number sau dau =
+						error(2, *current_token);
+						return 2;
+					}
+				} else { // Thieu dau "="
+					error(7, *current_token);
+					return 7;
+				}
+			} else { // Thieu ident
+				error(6, *current_token);
+				return 6;
+			}
+		} while (current_token->tag == TCOMMA);
+		// Test ;
+		if (current_token->tag == TSCOLON) {
+			(*get_token)(current_token);
+			// continue
+		} else { // thieu dau ;
+			error(1, *current_token);
+			return 1;
+		}
+	}
+	if (current_token->tag == TVAR) {
+		do {
+			(*get_token)(current_token);
+			if (current_token->tag == TIDENT) {
+				// coppy token
+				struct token tmp;
+				strcpy(tmp.attribute, current_token->attribute);
+				tmp.col = current_token->col;
+				tmp.line = current_token->line;
+				(*get_token)(current_token);
+				// check array?
+				if (current_token->tag == TLBRACE) { // "[" => array
+					// check and add ident array
+					if (!is_exist_name(current_symbols, tmp.attribute, ITARRAY)) {
+						add_ident(current_symbols, tmp.attribute, ITARRAY);
+					} else {
+						error_semantic(*current_token, "Khai bao mang trung ten\n\0");
+					}
+					(*get_token)(current_token);
+					if (current_token->tag == TNUMBER) {
+						(*get_token)(current_token);
+						if (current_token->tag == TRBRACE) {
 							(*get_token)(current_token);
 						} else {
-							error(6, *current_token);
-							return 6;
+							error(17, *current_token);
+							return 17;
 						}
-					} while (current_token->tag == TSCOLON);
-					// Test ")"
-					printf("Oh yeah\n");
-					//(*get_token)(current_token);
-					if (current_token->tag == TRPAREN) {
+					} else {
+						return 17;
+						error(22, *current_token);
+					}
+				} else { // La bien
+					// kiem tra va add bien
+					if (!is_exist_name(current_symbols, tmp.attribute, ITVARIABLE)) {
+						add_ident(current_symbols, tmp.attribute, ITVARIABLE);
+					} else {
+						error_semantic(*current_token, "Khai bao bien trung ten\n\0");
+					}
+				}
+			} else { // Thieu IDENT
+				error(6, *current_token);
+				return 6;
+			}
+		} while (current_token->tag == TCOMMA);
+		// Test ;
+		if (current_token->tag == TSCOLON) {
+			(*get_token)(current_token);
+			// continue
+		} else { // thieu dau ;
+			error(1, *current_token);
+			return 1;
+		}
+	}
+	if (current_token->tag == TPROCEDURE) {
+		(*get_token)(current_token);
+		if (current_token->tag == TIDENT) {
+			// check semantic
+			if (!is_exist_name(current_symbols, 
+					current_token->attribute, ITPROCEDURE)) {
+				//add ident va tao bang symbols moi
+				current_symbols = add_ident_procedure(current_symbols, 
+					current_token->attribute, ITPROCEDURE);
+			} else {
+				error_semantic(*current_token, "Khai bao thu tuc trung ten.\n\0");
+			}
+			(*get_token)(current_token);
+			if (current_token->tag == TLPAREN) { // TLPAREN
+				do {
+					(*get_token)(current_token);
+					// VAR is optionnal
+					if (current_token->tag == TVAR) {
+						(*get_token)(current_token);
+					}
+
+					if (current_token->tag == TIDENT) {
+						// check semantic
+						if (!is_exist_name(current_symbols, 
+								current_token->attribute, ITVARIABLE)) {
+							add_ident(current_symbols, 
+								current_token->attribute, ITVARIABLE);
+						} else {
+							error_semantic(*current_token, "Khai bao tham so trung ten\n\0");
+						}
 						(*get_token)(current_token);
 					} else {
-						error(19, *current_token);
-						return 19;
+						error(6, *current_token);
+						return 6;
 					}
-				} 
-				// ; block ;
+				} while (current_token->tag == TSCOLON);
+				// Test ")"
+				printf("Oh yeah\n");
+				//(*get_token)(current_token);
+				if (current_token->tag == TRPAREN) {
+					(*get_token)(current_token);
+				} else {
+					error(19, *current_token);
+					return 19;
+				}
+			} 
+			// ; block ;
+			if (current_token->tag == TSCOLON) {
+				(*get_token)(current_token);
+				parse_block(current_token, get_token);
+				// check semantic : exit procedure symbols
+				current_symbols = find_parent(current_symbols);
 				if (current_token->tag == TSCOLON) {
 					(*get_token)(current_token);
-					parse_block(current_token, get_token);
-					if (current_token->tag == TSCOLON) {
-						(*get_token)(current_token);
-						parse_block(current_token, get_token);
-						return 0;
-					} else { // thieu dau ;
-						error(1, *current_token);
-						return 1;
-					}
+					// continue
 				} else { // thieu dau ;
 					error(1, *current_token);
 					return 1;
 				}
+			} else { // thieu dau ;
+				error(1, *current_token);
+				return 1;
 			}
-			 else { // Thieu ident sau procedure
-				error(6, *current_token);
-			}
-			break;
-		case TBEGIN:
-			do {
-				(*get_token)(current_token);
-				parse_statement(current_token, get_token);
-			} while (current_token->tag == TSCOLON);
-			if (current_token->tag == TEND) {
-				(*get_token)(current_token);
-				return 0;
-			} else {
-				printf("error here\n");
-				error(3, *current_token);
-				return 3;
-			}
-			break;
-		default:
-			error(5, *current_token);
-			return -1;
+		}
+		else { // Thieu ident sau procedure
+			error(6, *current_token);
+		}
 	}
-	// cannot reach
-	(*get_token)(current_token);
+	if (current_token->tag == TBEGIN) {
+		do {
+			(*get_token)(current_token);
+			parse_statement(current_token, get_token);
+		} while (current_token->tag == TSCOLON);
+		if (current_token->tag == TEND) {
+			(*get_token)(current_token);
+			return 0;
+		} else {
+			printf("error here\n");
+			error(3, *current_token);
+			return 3;
+		}
+	}
+	printferror(*current_token, "Thieu BEGIN trong block\n\0");
 	return 0;
 }
 
 extern int parse_statement(struct token* current_token, void (*get_token)(struct token* next_token)) {
 	printf("parse statement: ");
 	print_token(*current_token);
+	struct token tmp;
 	switch (current_token->tag) {
 		case TIDENT:
+			// coppy token
+			strcpy(tmp.attribute, current_token->attribute);
+			tmp.col = current_token->col;
+			tmp.line = current_token->line;
 			(*get_token)(current_token);
+			char is_error_constant = 0;
 			// is array?
 			if (current_token->tag == TLBRACE) {
+				// kiem tra khai bao mang chua
+				int code = find_declared(current_symbols, tmp.attribute, ITARRAY);
+				switch (code) {
+					case 1: // chua khai bao
+						error_semantic(tmp, "Mang chua duoc khai bao.\0");
+					break;
+					case 0: // da khai bao
+					break;
+					case ITARRAY: // khong the xay ra
+					break;
+					case ITCONSTANT:
+						error_semantic(tmp, "Khong the su dung hang nhu 1 mang.\0");
+					break;
+					case ITPROCEDURE:
+						error_semantic(tmp, "Khong the su dung thu tuc nhu 1 mang.\0");
+					break;
+					case ITVARIABLE:
+						error_semantic(tmp, "Khong the su dung bien nhu 1 mang.\0");
+					break;
+				}
 				(*get_token)(current_token);
 				parse_expression(current_token, get_token);
 				if (current_token->tag == TRBRACE) {
@@ -391,8 +517,34 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 					error(17, *current_token);
 					return 17;
 				}
+			} else { // is variable
+				printf("Here I am 1\n");
+				int code = find_declared(current_symbols, tmp.attribute, ITVARIABLE);
+				printf("Here I am 1.5 %d\n", code);
+				switch (code) {
+					case 1: // chua khai bao
+						error_semantic(tmp, "Bien/Hang chua duoc khai bao.\0");
+					break;
+					case 0: // da khai bao
+					break;
+					case ITARRAY:
+						error_semantic(tmp, "Thieu index cho mang.\0");
+					break;
+					case ITCONSTANT:
+						is_error_constant = 1;
+					break;
+					case ITPROCEDURE:
+						error_semantic(tmp, "Khong the su dung thu tuc nhu 1 bien.\0");
+					break;
+					case ITVARIABLE: // Khong the xay ra
+					break;
+				}
 			}
 			if (current_token->tag == TASSIGN) {
+				printf("Here I am 2\n");
+				if (is_error_constant) {
+					error_semantic(tmp, "Khong the gan gia tri cho hang.\0");
+				}
 				(*get_token)(current_token);
 				parse_expression(current_token, get_token);
 				switch (current_token->tag) {
@@ -435,6 +587,30 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 		case TCALL:
 			(*get_token)(current_token);
 			if (current_token->tag == TIDENT) {
+				strcpy(tmp.attribute, current_token->attribute);
+				tmp.col = current_token->col;
+				tmp.line = current_token->line;
+				int n_param = 0;
+				int code = find_procedure(current_symbols, current_token->attribute, &n_param);
+				switch (code) {
+					case 1: // chua khai bao
+						error_semantic(tmp, "Thu tuc chua duoc khai bao.\0");
+					break;
+					case 0: // da khai bao
+					break;
+					case ITARRAY:
+						error_semantic(tmp, "Khong the su dung mang nhu thu tuc.\0");
+					break;
+					case ITCONSTANT:
+						error_semantic(tmp, "Khong the su dung hang nhu thu tuc.\0");
+					break;
+					case ITPROCEDURE: // Khong the xay ra
+					break;
+					case ITVARIABLE:
+						error_semantic(tmp, "Khong the su dung bien nhu thu tuc.\0");
+					break;
+				}
+				int real_n_param = 0;
 				(*get_token)(current_token);
 				// Co tham so?
 				if (current_token->tag == TLPAREN) {
@@ -445,10 +621,12 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 					} else {
 						printf("co tham so\n");
 						parse_expression(current_token, get_token);
+						real_n_param++;
 						while (current_token->tag == TCOMMA) {
 							printf("parse co tham so\n");
 							(*get_token)(current_token);
 							parse_expression(current_token, get_token);
+							real_n_param++;
 						}
 						// check )
 						if (current_token->tag == TRPAREN) {
@@ -458,6 +636,10 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 							return 19;
 						}
 					}
+				}
+				// check semantic n_param
+				if (real_n_param != n_param) {
+					error_semantic(tmp, "So tham so truyen khong phu hop\n\0");
 				}
 				// Khong goi get_token vi da goi truoc roi.
 				printf("end parse statement: ");
@@ -533,6 +715,26 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 		case TFOR:
 			(*get_token)(current_token);
 			if (current_token->tag == TIDENT) {
+				// check semantic
+				int code = find_declared(current_symbols, current_token->attribute, ITVARIABLE);
+				switch (code) {
+					case 1: // chua khai bao
+						error_semantic(*current_token, "Bien chua duoc khai bao.\0");
+					break;
+					case 0: // da khai bao
+					break;
+					case ITARRAY:
+						error_semantic(*current_token, "Khong duoc su dung mang trong vong lap for.\0");
+					break;
+					case ITCONSTANT:
+						error_semantic(*current_token, "Khong duoc su dung hang trong vong lap for.\0");
+					break;
+					case ITPROCEDURE:
+						error_semantic(*current_token, "Khong the su dung thu tuc nhu 1 bien.\0");
+					break;
+					case ITVARIABLE: // Khong the xay ra
+					break;
+				}
 				(*get_token)(current_token);
 				if (current_token->tag == TASSIGN) {
 					(*get_token)(current_token);
@@ -558,10 +760,31 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 				// Khong goi get_token vi da goi truoc roi.
 				printf("end parse statement: ");
 				return 0;
-			} else { // check ( or fail
+			} else {
+				// For kieu C, C++
+				// check ( or fail
 				if (current_token->tag == TLPAREN) {
 					(*get_token)(current_token);
 					if (current_token->tag == TIDENT) {
+						int code = find_declared(current_symbols, current_token->attribute, ITVARIABLE);
+						switch (code) {
+							case 1: // chua khai bao
+								error_semantic(*current_token, "Bien chua duoc khai bao.\0");
+							break;
+							case 0: // da khai bao
+							break;
+							case ITARRAY:
+								error_semantic(*current_token, "Khong duoc su dung mang trong vong lap for.\0");
+							break;
+							case ITCONSTANT:
+								error_semantic(*current_token, "Khong duoc su dung hang trong vong lap for.\0");
+							break;
+							case ITPROCEDURE:
+								error_semantic(*current_token, "Khong the su dung thu tuc nhu 1 bien.\0");
+							break;
+							case ITVARIABLE: // Khong the xay ra
+							break;
+						}
 						(*get_token)(current_token);
 						if (current_token->tag == TASSIGN) {
 							(*get_token)(current_token);
