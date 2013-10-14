@@ -6,6 +6,7 @@
 
 #define MAX_NAME_LENGTH 20
 #define MAX_NUM_SYMBOL 1000
+#define MAX_NUM_PARAM 50
 
 enum ident_type {
 	ITVARIABLE = 10,
@@ -25,6 +26,10 @@ struct symbols {
 	struct symbols* parent;
 	struct ident list_ident[MAX_NUM_SYMBOL];
 	int index;
+	int n_param;
+	// 0: tham tri
+	// 1: tham bien
+	char param_cod[MAX_NUM_PARAM];
 	
 };
 

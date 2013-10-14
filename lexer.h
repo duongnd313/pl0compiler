@@ -70,7 +70,7 @@ extern struct token* get_token(FILE* f, char* c_before, struct token* mtoken) {
 			}
 		} else if (isletter(ch)) {
 			char value[MAX_IDENT_LENGTH + 1];
-			value[0] = ch;
+			value[0] = toupper(ch);
 			int i = 1;
 			while (1) {
 				ch = fgetc(f);
@@ -81,7 +81,7 @@ extern struct token* get_token(FILE* f, char* c_before, struct token* mtoken) {
 					return mtoken;
 				}
 				if (isdigit(ch) || isletter(ch)) {
-					value[i] = ch;
+					value[i] = toupper(ch);
 					i++;
 				} else {
 					*c_before = ch;

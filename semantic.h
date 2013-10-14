@@ -128,10 +128,10 @@ extern struct symbols* add_ident_procedure(struct symbols* current_symbols, char
 	add_ident(current_symbols, name, type);
 	int index = current_symbols->index;
 	struct symbols * new_list = malloc(sizeof(struct symbols));
+	current_symbols->list_ident[index].next_list = new_list;
 	new_list->parent = current_symbols;
 	new_list->index = -1;
-	current_symbols->list_ident[index].next_list = new_list;
-	return current_symbols->list_ident[index].next_list;
+	return new_list;
 }
 
 extern struct symbols* find_parent(struct symbols* current_symbols) {
@@ -139,6 +139,48 @@ extern struct symbols* find_parent(struct symbols* current_symbols) {
 }
 
 extern int find_procedure(struct symbols* current_symbols, char* name, int* num_param) {
-	return 1;
+	printf("Find proc %d\n", 10);
+	int i = 0;
+	int tmp_type = -1;
+	for (i=0; i < current_symbols->index + 1; i++) {
+		printf("cai gi the %s\n", current_symbols->list_ident[i].name);
+		if (strcmp(name, current_symbols->list_ident[i].name) == 0) {
+			printf("found name\n");
+			if (current_symbols->list_ident[i].type == ITPROCEDURE) {
+				(*num_param) = current_symbols->list_ident[i].next_list->n_param;
+				return 0;
+			} else {
+				tmp_type = current_symbols->list_ident[i].type;
+			}
+		}
+	}
+	printf("1\n");
+	// Khong tim thay. Tim bang cha.
+	if (current_symbols->parent == NULL) {
+		printf("---- No parent----");
+		if (tmp_type == -1) { // Chua duoc khai bao
+			return 1;
+		} else {
+			return tmp_type; // Khai bao khac kieu
+		}
+	} else {
+		printf("---- Find parent----");
+		int tmp2 = find_procedure(current_symbols->parent, name, num_param);
+		if (tmp2 == 0) { // Tim thay
+			return 0;
+		} else {	// Khong tim thay hoac khac kieu
+			// Return kieu sai gan nhat
+			if (tmp_type != -1) {
+				return tmp_type;
+			} else {
+				return tmp2;
+			}
+		}
+	}
+	printf("Det\n");
+}
+
+extern void set_n_param(struct symbols* current_symbols, int n_param) {
+	current_symbols->n_param = n_param;
 }
 #endif

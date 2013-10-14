@@ -8,9 +8,6 @@ int test_proc() {
 }
 
 int main(int argc, char* argv[]) {
-	test_proc();
-	int test_proc;
-	test_proc = test_proc();
 	struct symbols main_block_symbols;
 	struct symbols* currenttt = &main_block_symbols;
 	main_block_symbols.index = -1;
