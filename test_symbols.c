@@ -8,6 +8,12 @@ int test_proc() {
 }
 
 int main(int argc, char* argv[]) {
+	char param_code[50] = "";
+	strcat(param_code, "0");
+	strcat(param_code, "1");
+	strcat(param_code, "1");
+	strcat(param_code, "0");
+	printf("Haha %s\n", param_code);
 	struct symbols main_block_symbols;
 	struct symbols* currenttt = &main_block_symbols;
 	main_block_symbols.index = -1;

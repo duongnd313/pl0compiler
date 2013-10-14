@@ -20,7 +20,7 @@ begin
 for i:= 1 to 99 do
 for j:= i + 1 to 100 do
 if tp[i] > tp [j] then
-call SubProc2(tp[i], tp[j]);
+call SubProc2(i, tp[j]);
 end;
 
 begin
@@ -45,6 +45,6 @@ end;
 begin
 for i:= 1 to 10 do
 for j:= i + 2 to x3 do
-call a2(i, j, z);
-call a1;
+call a2(i, j , 23);
+call a1();
 end.

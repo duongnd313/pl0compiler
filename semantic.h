@@ -31,7 +31,7 @@ extern struct symbols* find_parent(struct symbols* current_symbols);
 // Tim procedure
 // = 1 Neu khong tim thay thu tuc,
 // = 0 neu tim thay thu tuc.
-extern int find_procedure(struct symbols* current_symbols, char* name, int* num_param);
+extern int find_procedure(struct symbols* current_symbols, char* name, char* param_code);
 
 extern int add_ident(struct symbols* current_symbols, char* name, enum ident_type type) {
 	if (current_symbols->index >= MAX_NUM_SYMBOL) {
@@ -43,6 +43,19 @@ extern int add_ident(struct symbols* current_symbols, char* name, enum ident_typ
 	current_symbols->index = current_symbols->index + 1;
 	ini_ident(&(current_symbols->list_ident[current_symbols->index]),
 		name, type);
+	return 1;
+}
+
+extern int add_var_ident(struct symbols* current_symbols, char* name) {
+	if (current_symbols->index >= MAX_NUM_SYMBOL) {
+		printf("Khai bao so bien qua gioi han %d bien\n", MAX_NUM_SYMBOL);
+		exit(-1);
+		return 0;
+	}
+	current_symbols->index = current_symbols->index + 1;
+	ini_ident(&(current_symbols->list_ident[current_symbols->index]),
+		name, ITVARIABLE);
+	current_symbols->list_ident[current_symbols->index].is_var = 1;
 	return 1;
 }
 
@@ -138,7 +151,7 @@ extern struct symbols* find_parent(struct symbols* current_symbols) {
 	return current_symbols->parent;
 }
 
-extern int find_procedure(struct symbols* current_symbols, char* name, int* num_param) {
+extern int find_procedure(struct symbols* current_symbols, char* name, char* param_code) {
 	printf("Find proc %d\n", 10);
 	int i = 0;
 	int tmp_type = -1;
@@ -147,7 +160,8 @@ extern int find_procedure(struct symbols* current_symbols, char* name, int* num_
 		if (strcmp(name, current_symbols->list_ident[i].name) == 0) {
 			printf("found name\n");
 			if (current_symbols->list_ident[i].type == ITPROCEDURE) {
-				(*num_param) = current_symbols->list_ident[i].next_list->n_param;
+				//(*num_param) = current_symbols->list_ident[i].next_list->n_param;
+				strcpy(param_code, current_symbols->list_ident[i].next_list->param_code);
 				return 0;
 			} else {
 				tmp_type = current_symbols->list_ident[i].type;
@@ -165,7 +179,7 @@ extern int find_procedure(struct symbols* current_symbols, char* name, int* num_
 		}
 	} else {
 		printf("---- Find parent----");
-		int tmp2 = find_procedure(current_symbols->parent, name, num_param);
+		int tmp2 = find_procedure(current_symbols->parent, name, param_code);
 		if (tmp2 == 0) { // Tim thay
 			return 0;
 		} else {	// Khong tim thay hoac khac kieu
@@ -180,7 +194,7 @@ extern int find_procedure(struct symbols* current_symbols, char* name, int* num_
 	printf("Det\n");
 }
 
-extern void set_n_param(struct symbols* current_symbols, int n_param) {
-	current_symbols->n_param = n_param;
+extern void set_param_code(struct symbols* current_symbols, char* param_code) {
+	strcpy(current_symbols->param_code, param_code);
 }
 #endif

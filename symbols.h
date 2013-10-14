@@ -20,16 +20,16 @@ struct ident {
 	int ptr;
 	enum ident_type type;
 	struct symbols* next_list;
+	char is_var;
 };
 
 struct symbols {
 	struct symbols* parent;
 	struct ident list_ident[MAX_NUM_SYMBOL];
 	int index;
-	int n_param;
 	// 0: tham tri
 	// 1: tham bien
-	char param_cod[MAX_NUM_PARAM];
+	char param_code[MAX_NUM_PARAM];
 	
 };
 
