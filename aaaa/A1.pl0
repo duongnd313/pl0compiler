@@ -1,19 +1,20 @@
-Program TESTA1; 
-Const MAX = 100, MIN = 0; 
-VAR M, N, D, ADD;
-  PROCEDURE ADD(VAR A);
-  VAR M, D;
-    PROCEDURE SUB;
-    VAR D, M;
-    BEGIN
-	D := M + MAX;
-    END;
-  BEGIN
-    M:=M+10;
-  END;
+Program TESTA1;
+Var a,b, c;
+procedure proc1(var x; y);
+Begin
+		c := 10;
+		x := y;
+End;
+
+procedure proc2( x; y;z);
+Begin
+		call proc1(x,y);
+End;
 
 Begin
-  call ADD();
+	a :=0;
+	b :=1;
+	c:=2;
+	call proc1(a, c);
 End.
 
-(* Test Khai bao don gian *) 

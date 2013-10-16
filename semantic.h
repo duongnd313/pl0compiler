@@ -14,13 +14,13 @@
 // Neu khai bao nhung khac kieu, tra ve enum ident_type la type kieu (>=10)
 // Neu chua khai bao tra ve 1.
 // KHONG DUNG TYPE = ITPROCEDURE
-extern int find_declared(struct symbols* current_symbols, char* name, enum ident_type type);
+extern int find_declared(struct symbols* current_symbols, char* name, enum ident_type type, int* p, struct ident** m_ident);
 
 // Dung de kiem tra khi khai bao bien. Kiem tra trung ten khai bao.
 extern int is_exist_name(struct symbols* current_symbols, char* name, enum ident_type type);
 
 // Them ident
-extern int add_ident(struct symbols* current_symbols, char* name, enum ident_type type);
+extern int add_ident(struct symbols* current_symbols, char* name, enum ident_type type, int size);
 
 // Tao bang moi cho thu tuc
 extern struct symbols* add_ident_procedure(struct symbols* current_symbols, char* name, enum ident_type type);
@@ -31,9 +31,9 @@ extern struct symbols* find_parent(struct symbols* current_symbols);
 // Tim procedure
 // = 1 Neu khong tim thay thu tuc,
 // = 0 neu tim thay thu tuc.
-extern int find_procedure(struct symbols* current_symbols, char* name, char* param_code);
+extern int find_procedure(struct symbols* current_symbols, char* name, char* param_code, int*p);
 
-extern int add_ident(struct symbols* current_symbols, char* name, enum ident_type type) {
+extern int add_ident(struct symbols* current_symbols, char* name, enum ident_type type, int size) {
 	if (current_symbols->index >= MAX_NUM_SYMBOL) {
 		printf("Khai bao so bien qua gioi han %d bien\n", MAX_NUM_SYMBOL);
 		exit(-1);
@@ -41,21 +41,26 @@ extern int add_ident(struct symbols* current_symbols, char* name, enum ident_typ
 	}
 	printf("add\n");
 	current_symbols->index = current_symbols->index + 1;
+	int offset = current_symbols->size;
 	ini_ident(&(current_symbols->list_ident[current_symbols->index]),
-		name, type);
+		name, type, size, offset);
+	current_symbols->size = current_symbols->size + size;
 	return 1;
 }
 
-extern int add_var_ident(struct symbols* current_symbols, char* name) {
+extern int add_var_ident(struct symbols* current_symbols, char* name, int size) {
 	if (current_symbols->index >= MAX_NUM_SYMBOL) {
 		printf("Khai bao so bien qua gioi han %d bien\n", MAX_NUM_SYMBOL);
 		exit(-1);
 		return 0;
 	}
 	current_symbols->index = current_symbols->index + 1;
+	int offset = current_symbols->size;
+	printf("add var size %d", size);
 	ini_ident(&(current_symbols->list_ident[current_symbols->index]),
-		name, ITVARIABLE);
+		name, ITVARIABLE, size, offset);
 	current_symbols->list_ident[current_symbols->index].is_var = 1;
+	current_symbols->size = current_symbols->size + size;
 	return 1;
 }
 
@@ -75,12 +80,16 @@ extern int is_exist_name(struct symbols* current_symbols, char* name, enum ident
 	return 0;
 }
 
-extern int find_declared(struct symbols* current_symbols, char* name, enum ident_type type) {
+extern int find_declared(struct symbols* current_symbols, char* name, enum ident_type type, int* p, struct ident** m_ident) {
+	*p = 0;
 	int i = 0;
 	int tmp_type = -1;
 	for (i=0; i < current_symbols->index + 1; i++) {
 		if (strcmp(name, current_symbols->list_ident[i].name) == 0) {
 			if (current_symbols->list_ident[i].type == type) {
+				printf("\n found---------\n");
+				*m_ident = &(current_symbols->list_ident[i]);
+				printf("\nM_ident = %s",  (**m_ident).name);
 				return 0;
 			} else {
 				if (type == ITPROCEDURE) {
@@ -101,7 +110,9 @@ extern int find_declared(struct symbols* current_symbols, char* name, enum ident
 		}
 	} else {
 		printf("---- Find parent----");
-		int tmp2 = find_declared(current_symbols->parent, name, type);
+		int p_new = 0;
+		int tmp2 = find_declared(current_symbols->parent, name, type, &p_new, m_ident);
+		*p = p_new + 1;
 		if (tmp2 == 0) { // Tim thay
 			return 0;
 		} else {	// Khong tim thay hoac khac kieu
@@ -117,6 +128,7 @@ extern int find_declared(struct symbols* current_symbols, char* name, enum ident
 
 extern void print_symbols(struct symbols table) {
 	int i = 0;
+	printf("tab size: %d\n", table.size);
 	for (i=0; i < table.index + 1; i++) {
 		char str_type[50];
 		switch (table.list_ident[i].type) {
@@ -133,17 +145,19 @@ extern void print_symbols(struct symbols table) {
 				strcpy(str_type, "ITVARIABLE");
 			break;
 		}
-		printf("%s %s\n", table.list_ident[i].name, str_type);
+		struct ident tmp = table.list_ident[i];
+		printf("%s %s offset %d size%d\n", table.list_ident[i].name, str_type, tmp.offset, tmp.size);
 	}
 }
 
 extern struct symbols* add_ident_procedure(struct symbols* current_symbols, char* name, enum ident_type type) {
-	add_ident(current_symbols, name, type);
+	add_ident(current_symbols, name, type, 0);
 	int index = current_symbols->index;
 	struct symbols * new_list = malloc(sizeof(struct symbols));
 	current_symbols->list_ident[index].next_list = new_list;
 	new_list->parent = current_symbols;
 	new_list->index = -1;
+	new_list->size = 4;
 	return new_list;
 }
 
@@ -151,8 +165,8 @@ extern struct symbols* find_parent(struct symbols* current_symbols) {
 	return current_symbols->parent;
 }
 
-extern int find_procedure(struct symbols* current_symbols, char* name, char* param_code) {
-	printf("Find proc %d\n", 10);
+extern int find_procedure(struct symbols* current_symbols, char* name, char* param_code, int* p) {
+	*p = 0;
 	int i = 0;
 	int tmp_type = -1;
 	for (i=0; i < current_symbols->index + 1; i++) {
@@ -179,7 +193,9 @@ extern int find_procedure(struct symbols* current_symbols, char* name, char* par
 		}
 	} else {
 		printf("---- Find parent----");
-		int tmp2 = find_procedure(current_symbols->parent, name, param_code);
+		int p_new = 0;
+		int tmp2 = find_procedure(current_symbols->parent, name, param_code, &p_new);
+		*p = p_new + 1;
 		if (tmp2 == 0) { // Tim thay
 			return 0;
 		} else {	// Khong tim thay hoac khac kieu

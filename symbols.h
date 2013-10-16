@@ -21,22 +21,27 @@ struct ident {
 	enum ident_type type;
 	struct symbols* next_list;
 	char is_var;
+	int offset;
+	int size;
 };
 
 struct symbols {
 	struct symbols* parent;
 	struct ident list_ident[MAX_NUM_SYMBOL];
 	int index;
+	int size;
 	// 0: tham tri
 	// 1: tham bien
 	char param_code[MAX_NUM_PARAM];
 	
 };
 
-extern void ini_ident(struct ident* my_ident, char* name, enum ident_type type);
+extern void ini_ident(struct ident* my_ident, char* name, enum ident_type type, int size, int offset);
 
-extern void ini_ident(struct ident* my_ident, char* name, enum ident_type type) {
+extern void ini_ident(struct ident* my_ident, char* name, enum ident_type type, int size, int offset) {
 	strcpy(my_ident->name, name);
 	my_ident->type = type;
+	my_ident->size = size;
+	my_ident->offset = offset;
 }
 #endif

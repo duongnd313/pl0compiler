@@ -1,0 +1,12 @@
+program example;
+const x = 1;
+var n, y[2];
+begin
+n := 6;
+n := 20 * n + x;
+y[x] := 1;
+begin
+n :=2;
+y[1] := x;
+end;
+end.

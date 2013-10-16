@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "tag.h"
 #include "semantic.h"
+#include "gencode.h"
 #include <stdlib.h>
 extern int parse_program(struct token* current_token, void (*get_token)(struct token* next_token));
 extern int parse_factor(struct token* current_token, void (*get_token)(struct token* next_token));
@@ -18,6 +19,8 @@ extern void printferror(struct token mtoken, char* msg);
 
 struct symbols main_block_symbols;
 struct symbols* current_symbols = &main_block_symbols;
+struct list_code codes;
+
 extern void error(int error_code, struct token mtoken) {
 	printf("\nError %d truoc token %s(line %d, col %d)", error_code, tag_name[mtoken.tag], mtoken.line, mtoken.col);
 	switch (error_code) {
@@ -134,8 +137,16 @@ extern void error_semantic(struct token mtoken, char* msg) {
 }
 
 extern int parse_program(struct token* current_token, void (*get_token)(struct token* next_token)) {
+	struct e_code* first_code = malloc(sizeof(struct e_code));
+	strcpy(first_code->str_code, "");
+	first_code->next_code = NULL;
+	codes.first_code = first_code;
+	codes.last_code = first_code;
+	codes.n_code = 0;
 	printf("parse program: ");
 	main_block_symbols.parent = NULL;
+	main_block_symbols.index = -1;
+	main_block_symbols.size = 4;
 	print_token(*current_token);
 	if (current_token->tag == TEND) {
 		error(4, *current_token);
@@ -150,6 +161,7 @@ extern int parse_program(struct token* current_token, void (*get_token)(struct t
 				parse_block(current_token, get_token);
 				if (current_token->tag == TDOT) {
 					printf("\n\n\nparse successfull\n\n\n");
+					print_codes(codes);
 					return 0;
 				} else {	// thieu dau .
 					error(10, *current_token);
@@ -183,7 +195,9 @@ extern int parse_factor(struct token* current_token, void (*get_token)(struct to
 		tmp.line = current_token->line;
 		(*get_token)(current_token);
 		if (current_token->tag == TLBRACE) { // Array
-			int code = find_declared(current_symbols, tmp.attribute, ITARRAY);
+			int p = 0;
+			struct ident* m_ident;
+			int code = find_declared(current_symbols, tmp.attribute, ITARRAY, &p, &m_ident);
 			switch (code) {
 				case 1: // chua khai bao
 					error_semantic(tmp, "Mang chua duoc khai bao.\0");
@@ -203,7 +217,25 @@ extern int parse_factor(struct token* current_token, void (*get_token)(struct to
 				break;
 			}
 			(*get_token)(current_token);
+			// gen code
+			//LA Id.Addr; LC Id.width; genE();MUL;  ADD; LI;
+			// LA p, q
+			struct e_code* m_code1 = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_LA, p, m_ident->offset , m_code1);
+			// LC element_size
+			struct e_code* m_code2 = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_LC, -1, 1, m_code2);
+			// gen E
 			parse_expression(current_token, get_token);
+			// MUL
+			struct e_code* m_code3 = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_MUL, -1, -1, m_code3);
+			// ADD
+			struct e_code* m_code4 = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_ADD, -1, -1, m_code4);
+			// LI
+			struct e_code* m_code5 = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_LI, -1, -1, m_code5);
 			if (current_token->tag == TRBRACE) {
 				(*get_token)(current_token);
 				return 0;
@@ -213,7 +245,9 @@ extern int parse_factor(struct token* current_token, void (*get_token)(struct to
 			}
 		}
 		// variable or constant
-		int code = find_declared(current_symbols, tmp.attribute, ITVARIABLE);
+		int p = 0;
+		struct ident* m_ident;
+		int code = find_declared(current_symbols, tmp.attribute, ITVARIABLE, &p, &m_ident);
 		switch (code) {
 			case 1: // chua khai bao
 				error_semantic(tmp, "Bien/Hang chua duoc khai bao.\0");
@@ -232,8 +266,19 @@ extern int parse_factor(struct token* current_token, void (*get_token)(struct to
 			case ITVARIABLE: // Khong the xay ra
 			break;
 		}
+		// gencode
+		struct e_code* m_code = malloc(sizeof(struct e_code));
+		gen_code(&codes, OP_LV, p, m_ident->offset , m_code);
+		if (m_ident->is_var) {
+			printf("KKKKKKKKKKKKKKKKKKKKKKKK VAR ????\n");
+			struct e_code* m_code2 = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_LI, -1, -1 , m_code2);
+		}
 		return 0;
 	} else if (current_token->tag == TNUMBER) {
+		// gen code
+		struct e_code* m_code = malloc(sizeof(struct e_code));
+		gen_code(&codes, OP_LC, -1, atoi(current_token->attribute) , m_code);
 		(*get_token)(current_token);
 		return 0;
 	} else if (current_token->tag == TLPAREN) {
@@ -260,8 +305,16 @@ extern int parse_term(struct token* current_token, void (*get_token)(struct toke
 	print_token(*current_token);
 	parse_factor(current_token, get_token);
 	while (current_token->tag == TMUL || current_token->tag == TDIV) {
+		struct token op = *current_token;
 		(*get_token)(current_token);
 		parse_factor(current_token, get_token);
+		struct e_code* code = malloc(sizeof(struct e_code));
+		if (op.tag == TMUL) {
+			gen_code(&codes, OP_MUL, -1, -1, code);
+		}
+		else {
+			gen_code(&codes, OP_DIV, -1, -1, code);
+		}
 	}
 	return 0;
 }
@@ -269,15 +322,30 @@ extern int parse_term(struct token* current_token, void (*get_token)(struct toke
 extern int parse_expression(struct token* current_token, void (*get_token)(struct token* next_token)) {
 	printf("parse_expression: ");
 	print_token(*current_token);
+	// 0: am, 1 duong
+	char sign = 1;
 	switch (current_token->tag) {
-		case TPLUS:
 		case TMINUS:
+			sign = 0;
+		case TPLUS:
 			(*get_token)(current_token);
 		default:
 			parse_term(current_token, get_token);
+			if (sign == 0) {
+				struct e_code* code = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_NEG, -1, -1, code);
+			}
 			while (current_token->tag == TPLUS || current_token->tag == TMINUS) {
+				struct token op = *current_token;
 				(*get_token)(current_token);
 				parse_term(current_token, get_token);
+				struct e_code* code = malloc(sizeof(struct e_code));
+				if (op.tag == TPLUS) {
+					gen_code(&codes, OP_ADD, -1, -1, code);
+				}
+				else {
+					gen_code(&codes, OP_SUB, -1, -1, code);
+				}
 			}
 			printf("end parse_expression: ");
 			return 0;
@@ -290,10 +358,8 @@ extern int parse_expression(struct token* current_token, void (*get_token)(struc
 extern int parse_block(struct token* current_token, void (*get_token)(struct token* next_token)) {
 	printf("parse_block: ");
 	print_token(*current_token);
-	if (current_token->tag == TENDT) {
-		error(5, *current_token);
-		return -1;
-	}
+	struct e_code* code_jmp_block = malloc(sizeof(struct e_code));
+	gen_code(&codes, OP_J, -1, 0 , code_jmp_block);
 	if (current_token->tag == TCONST) {
 		do {
 			(*get_token)(current_token);
@@ -306,7 +372,7 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 				(*get_token)(current_token);
 				// kiem tra va add constant
 				if (!is_exist_name(current_symbols, tmp.attribute, ITCONSTANT)) {
-					add_ident(current_symbols, current_token->attribute, ITCONSTANT);
+					add_ident(current_symbols, current_token->attribute, ITCONSTANT, 1);
 				} else {
 					error_semantic(*current_token, "Khai bao hang trung ten\n\0");
 				}
@@ -350,12 +416,15 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 				if (current_token->tag == TLBRACE) { // "[" => array
 					// check and add ident array
 					if (!is_exist_name(current_symbols, tmp.attribute, ITARRAY)) {
-						add_ident(current_symbols, tmp.attribute, ITARRAY);
+						// add sau
+						//add_ident(current_symbols, tmp.attribute, ITARRAY);
 					} else {
 						error_semantic(*current_token, "Khai bao mang trung ten\n\0");
 					}
+					int array_size = 0;
 					(*get_token)(current_token);
 					if (current_token->tag == TNUMBER) {
+						array_size = atoi(current_token->attribute);
 						(*get_token)(current_token);
 						if (current_token->tag == TRBRACE) {
 							(*get_token)(current_token);
@@ -367,10 +436,12 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 						return 17;
 						error(22, *current_token);
 					}
+					// add ident
+					add_ident(current_symbols, tmp.attribute, ITARRAY, array_size);
 				} else { // La bien
 					// kiem tra va add bien
 					if (!is_exist_name(current_symbols, tmp.attribute, ITVARIABLE)) {
-						add_ident(current_symbols, tmp.attribute, ITVARIABLE);
+						add_ident(current_symbols, tmp.attribute, ITVARIABLE, 1);
 					} else {
 						error_semantic(*current_token, "Khai bao bien trung ten\n\0");
 					}
@@ -419,11 +490,11 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 						if (!is_exist_name(current_symbols, 
 								current_token->attribute, ITVARIABLE)) {
 							if (is_var) {
-								add_var_ident(current_symbols, current_token->attribute);
+								add_var_ident(current_symbols, current_token->attribute, 1);
 								strcat(param_code, "1");
 							} else {
 								add_ident(current_symbols, 
-								current_token->attribute, ITVARIABLE);
+								current_token->attribute, ITVARIABLE, 1);
 								strcat(param_code, "0");
 							}
 							n_param++;
@@ -450,6 +521,7 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 			// ; block ;
 			if (current_token->tag == TSCOLON) {
 				(*get_token)(current_token);
+				
 				parse_block(current_token, get_token);
 				if (current_token->tag == TSCOLON) {
 					(*get_token)(current_token);
@@ -470,6 +542,9 @@ extern int parse_block(struct token* current_token, void (*get_token)(struct tok
 		}
 	}
 	if (current_token->tag == TBEGIN) {
+		// update jmp
+		code_jmp_block->q = codes.n_code;
+		sprintf(code_jmp_block->str_code, "J %d", codes.n_code);
 		do {
 			(*get_token)(current_token);
 			parse_statement(current_token, get_token);
@@ -492,6 +567,7 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 	print_token(*current_token);
 	struct token tmp;
 	switch (current_token->tag) {
+		// assign
 		case TIDENT:
 			// coppy token
 			strcpy(tmp.attribute, current_token->attribute);
@@ -499,10 +575,13 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 			tmp.line = current_token->line;
 			(*get_token)(current_token);
 			char is_error_constant = 0;
+			
+			struct ident* m_ident;
+			int p = 0;
 			// is array?
 			if (current_token->tag == TLBRACE) {
 				// kiem tra khai bao mang chua
-				int code = find_declared(current_symbols, tmp.attribute, ITARRAY);
+				int code = find_declared(current_symbols, tmp.attribute, ITARRAY, &p, &m_ident);
 				switch (code) {
 					case 1: // chua khai bao
 						error_semantic(tmp, "Mang chua duoc khai bao.\0");
@@ -522,7 +601,24 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 					break;
 				}
 				(*get_token)(current_token);
+				// gen code
+				//LA Id.Addr; LC Id.width; genE();MUL;  ADD; LI;
+				// LA p, q
+				struct e_code* m_code1 = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_LA, p, m_ident->offset , m_code1);
+				// LC element_size
+				struct e_code* m_code2 = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_LC, -1, 1, m_code2);
+				// gen E
 				parse_expression(current_token, get_token);
+				// MUL
+				struct e_code* m_code3 = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_MUL, -1, -1, m_code3);
+				// ADD
+				struct e_code* m_code4 = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_ADD, -1, -1, m_code4);
+				// end
+				
 				if (current_token->tag == TRBRACE) {
 					(*get_token)(current_token);
 				} else { // Thieu dau ]
@@ -530,9 +626,7 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 					return 17;
 				}
 			} else { // is variable
-				printf("Here I am 1\n");
-				int code = find_declared(current_symbols, tmp.attribute, ITVARIABLE);
-				printf("Here I am 1.5 %d\n", code);
+				int code = find_declared(current_symbols, tmp.attribute, ITVARIABLE, &p, &m_ident);
 				switch (code) {
 					case 1: // chua khai bao
 						error_semantic(tmp, "Bien/Hang chua duoc khai bao.\0");
@@ -551,44 +645,23 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 					case ITVARIABLE: // Khong the xay ra
 					break;
 				}
+				// gencode LA p q;
+				struct e_code* m_code = malloc(sizeof(struct e_code));
+				if (m_ident->is_var) {
+					gen_code(&codes, OP_LV, p, m_ident->offset , m_code);
+				} else {
+					gen_code(&codes, OP_LA, p, m_ident->offset , m_code);
+				}
 			}
 			if (current_token->tag == TASSIGN) {
-				printf("Here I am 2\n");
 				if (is_error_constant) {
 					error_semantic(tmp, "Khong the gan gia tri cho hang.\0");
 				}
+				// gen code  GenEx; ST;
 				(*get_token)(current_token);
 				parse_expression(current_token, get_token);
-				switch (current_token->tag) {
-					case TEQUAL:
-					case TCGT:
-					case TCGTEQ:
-					case TCGTLT:
-					case TCLT:
-					case TCLTEQ:
-						(*get_token)(current_token);
-						parse_expression(current_token, get_token);
-						if (current_token->tag == TQUESTION) {
-							(*get_token)(current_token);
-							parse_expression(current_token, get_token);
-							if (current_token->tag == TCOLOM) {
-								(*get_token)(current_token);
-								parse_expression(current_token, get_token);
-								printf("done parse statement\n");
-								return 0;
-							} else { // Thieu dau :
-								error(30, *current_token);
-								return 30;
-							}
-						} else { // Thieu dau ?
-							error(31, *current_token);
-							return 31;
-						}
-						break;
-					default:
-						printf("end parse statement: ");
-						return 0;
-				}
+				struct e_code* m_code2 = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_ST, p, m_ident->offset , m_code2);
 				printf("end parse statement: ");
 				return 0;
 			} else { // Thieu phep gan
@@ -598,6 +671,7 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 			break;
 		case TCALL:
 			(*get_token)(current_token);
+			struct e_code* code_call = malloc(sizeof(struct e_code));
 			if (current_token->tag == TIDENT) {
 				strcpy(tmp.attribute, current_token->attribute);
 				tmp.col = current_token->col;
@@ -605,7 +679,8 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 				int n_param = 0;
 				printf("call\n");
 				char param_code[MAX_NUM_PARAM] = "";
-				int code = find_procedure(current_symbols, current_token->attribute, param_code);
+				int p_proc = 0;
+				int code = find_procedure(current_symbols, current_token->attribute, param_code, &p_proc);
 				switch (code) {
 					case 1: // chua khai bao
 						error_semantic(tmp, "Thu tuc chua duoc khai bao.\0");
@@ -624,6 +699,10 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 						error_semantic(tmp, "Khong the su dung bien nhu thu tuc.\0");
 					break;
 				}
+				// gen call
+				struct e_code* code2 = malloc(sizeof(struct e_code));
+				gen_code(&codes, OP_INT, -1, 4, code2);
+				//
 				int real_n_param = 0;
 				n_param = strlen(param_code);
 				(*get_token)(current_token);
@@ -650,21 +729,41 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 							} else {
 								// var
 								if (current_token->tag == TIDENT) {
-									int code = find_declared(current_symbols, current_token->attribute, ITVARIABLE);
+									int p = 0;
+									struct ident* m_ident;
+									int code = find_declared(current_symbols, current_token->attribute, ITVARIABLE, &p, &m_ident);
+									struct e_code* codevar = malloc(sizeof(struct e_code));
 									switch (code) {
 										case 1: // chua khai bao
 											error_semantic(*current_token, "Bien chua duoc khai bao.\0");
 										break;
 										case 0: // da khai bao
 											(*get_token)(current_token);
+											// gen code load var
+											gen_code(&codes, OP_LA, p, m_ident->offset, codevar);
+											//
 										break;
 										case ITARRAY:
 											(*get_token)(current_token);
 											if (current_token->tag == TLBRACE) { // Array
 												(*get_token)(current_token);
-												printf("\n1\n");
+												// gen code
+												//LA Id.Addr; LC Id.width; genE();MUL;  ADD;
+												// LA p, q
+												codevar = malloc(sizeof(struct e_code));
+												gen_code(&codes, OP_LA, p, m_ident->offset , codevar);
+												// LC element_size
+												struct e_code* m_code2 = malloc(sizeof(struct e_code));
+												gen_code(&codes, OP_LC, -1, 1, m_code2);
+												// gen E
 												parse_expression(current_token, get_token);
-												printf("\n2\n");
+												// MUL
+												struct e_code* m_code3 = malloc(sizeof(struct e_code));
+												gen_code(&codes, OP_MUL, -1, -1, m_code3);
+												// ADD
+												struct e_code* m_code4 = malloc(sizeof(struct e_code));
+												gen_code(&codes, OP_ADD, -1, -1, m_code4);
+												//
 												if (current_token->tag == TRBRACE) {
 													(*get_token)(current_token);
 												} else { // Thieu dau ]
@@ -692,16 +791,11 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 							is_get_token = 0;
 						} while (current_token->tag == TCOMMA);
 						
-						/*
-						parse_expression(current_token, get_token);
-						real_n_param++;
-						while (current_token->tag == TCOMMA) {
-							printf("parse co tham so\n");
-							(*get_token)(current_token);
-							parse_expression(current_token, get_token);
-							real_n_param++;
-						}
-						*/
+						// gen code: DCT 4+n_param; Call p q 
+						struct e_code* code_dct = malloc(sizeof(struct e_code));
+						gen_code(&codes, OP_DCT, -1, 4 + n_param, code_dct);
+						code_call = malloc(sizeof(struct e_code));
+						gen_code(&codes, OP_LC, p_proc, 0, code_call);
 						// check n_param
 						if (real_n_param < n_param) {
 							error_semantic(tmp, "Truyen thieu tham so cho thu tuc");
@@ -795,7 +889,9 @@ extern int parse_statement(struct token* current_token, void (*get_token)(struct
 			(*get_token)(current_token);
 			if (current_token->tag == TIDENT) {
 				// check semantic
-				int code = find_declared(current_symbols, current_token->attribute, ITVARIABLE);
+				int p = 0;
+				struct ident* m_ident;
+				int code = find_declared(current_symbols, current_token->attribute, ITVARIABLE, &p, &m_ident);
 				switch (code) {
 					case 1: // chua khai bao
 						error_semantic(*current_token, "Bien chua duoc khai bao.\0");
@@ -857,21 +953,53 @@ extern int parse_condition(struct token* current_token, void (*get_token)(struct
 	printf("parse condition: ");
 	print_token(*current_token);
 	parse_expression(current_token, get_token);
+	
+	struct e_code* m_code = malloc(sizeof(struct e_code));
 	switch (current_token->tag) {
 		case TEQUAL:
+			(*get_token)(current_token);
+			parse_expression(current_token, get_token);
+			// gen code
+			gen_code(&codes, OP_EQ, -1, -1 , m_code);
+			return 0;
 		case TCGT:
+			(*get_token)(current_token);
+			parse_expression(current_token, get_token);
+			// gen code
+			m_code = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_GT, -1, -1 , m_code);
+			return 0;
 		case TCGTEQ:
+			(*get_token)(current_token);
+			parse_expression(current_token, get_token);
+			// gen code
+			m_code = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_GE, -1, -1 , m_code);
+			return 0;
 		case TCGTLT:
+			(*get_token)(current_token);
+			parse_expression(current_token, get_token);
+			// gen code
+			m_code = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_NE, -1, -1 , m_code);
+			return 0;
 		case TCLT:
+			(*get_token)(current_token);
+			parse_expression(current_token, get_token);
+			// gen code
+			m_code = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_LT, -1, -1 , m_code);
+			return 0;
 		case TCLTEQ:
 			(*get_token)(current_token);
 			parse_expression(current_token, get_token);
-			printf("done parse condition: ");
+			// gen code
+			m_code = malloc(sizeof(struct e_code));
+			gen_code(&codes, OP_LE, -1, -1 , m_code);
 			return 0;
 		default:
 			error(26, *current_token);
 			return 26;
 	}
 }
-
 #endif

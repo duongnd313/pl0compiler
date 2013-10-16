@@ -7,6 +7,7 @@
 #include "syntaxparser.h"
 
 FILE *f;
+FILE *f_output;
 int i = 0;
 struct token mtoken;
 char cb = ' ';
@@ -22,9 +23,16 @@ int main(int argc, char* argv[]) {
 		printf("path:%s khong ton tai.\n",path);
 		return 0;
 	}
+	if (!(f_output = fopen("machinecode.txt", "w"))) {
+		printf("Khong the tao file code.\n");
+		return 0;
+	}
+	
 	struct token current_token;
 	get_token_wrapper(&current_token);
 	parse_program(&current_token, get_token_wrapper);
+	fclose(f);
+	fclose(f_output);
 	return 0;
 }
 
